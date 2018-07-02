@@ -1,4 +1,5 @@
 ﻿using OsuRTDataProvider;
+using OsuRTDataProvider.Mods;
 using Sync.Command;
 using Sync.Plugins;
 using Sync.Tools;
@@ -8,6 +9,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using static OsuRTDataProvider.Mods.ModsInfo;
 
 namespace DifficultParamModifyPlugin
 {
@@ -22,10 +24,14 @@ namespace DifficultParamModifyPlugin
 
         Dictionary<string, float> modify_difficults = new Dictionary<string, float>(4);
 
+        SourcesWrapper.ORTDP.RealtimeDataProvideWrapperBase source_wrapper;
+
         /// <summary>
         /// 是否已经修改，true的话就不用多次修改，false的话不用多次恢复
         /// </summary>
         bool is_modify = false;
+        
+        bool enable_modify = false;
 
         string current_osu_file;
 
@@ -34,8 +40,9 @@ namespace DifficultParamModifyPlugin
             EventBus.BindEvent<PluginEvents.LoadCompleteEvent>(OnPluginLoadComplete);
 
             EventBus.BindEvent<PluginEvents.InitCommandEvent>(e=>e.Commands.Dispatch.bind("modify_diff", HandleCommands, "修改难度值"));
-        }
 
+            EventBus.BindEvent<PluginEvents.InitFilterEvent>(e => e.Filters.AddFilter(new Osu.IRCCommandFileter()));
+        }
 
         #region Commands
 
@@ -95,8 +102,7 @@ namespace DifficultParamModifyPlugin
             RestoreOsuFile(current_osu_file);
             current_osu_file = null;
             is_modify = false;
-
-            ortdp_plugin.ListenerManager.OnBeatmapChanged += ListenerManager_OnBeatmapChanged;
+            enable_modify = true;
         }
 
         private void StopModifyListen()
@@ -104,8 +110,12 @@ namespace DifficultParamModifyPlugin
             RestoreOsuFile(current_osu_file);
             current_osu_file = null;
             is_modify = false;
-            
-            ortdp_plugin.ListenerManager.OnBeatmapChanged -= ListenerManager_OnBeatmapChanged;
+            enable_modify = false;
+        }
+
+        public override void OnExit()
+        {
+            StopModifyListen();
         }
 
         private void OnPluginLoadComplete(PluginEvents.LoadCompleteEvent e)
@@ -117,22 +127,12 @@ namespace DifficultParamModifyPlugin
                 logger.LogInfomation($"找不到ORTDP插件，请输入命令\"plugins install provider\"并重启Sync");
                 return;
             }
-        }
 
-        ~DifficultParamModifyPlugin()
-        {
-            StopModifyListen();
-        }
+            source_wrapper = ortdp_plugin.ModsChangedAtListening ? new SourcesWrapper.ORTDP.RealtimeDataProviderModsWrapper(ortdp_plugin, this) : new SourcesWrapper.ORTDP.OsuRTDataProviderWrapper(ortdp_plugin, this);
 
-        private void ListenerManager_OnBeatmapChanged(OsuRTDataProvider.BeatmapInfo.Beatmap map)
-        {
-            if (map?.FilenameFull != current_osu_file)
-            {
-                RestoreOsuFile(current_osu_file);
-                ModifyOsuFile(map?.FilenameFull);
-            }
+            source_wrapper.OnTrigEvent += Source_wrapper_OnTrigEvent;
 
-            current_osu_file = map?.FilenameFull;
+            source_wrapper.Attach();
         }
 
         private void RestoreOsuFile(string restore_target)
@@ -276,6 +276,38 @@ namespace DifficultParamModifyPlugin
                     }
                 }
             }
+        }
+
+        #region Events Wrapper For OLSP
+
+        public event Action<string, int, int, bool> OnBeatmapChanged;
+
+        public ModsInfo CurrentMods { get => source_wrapper.current_mod; }
+        
+        private void Source_wrapper_OnTrigEvent(string osu_file, int set_id, int id, bool current_play)
+        {
+            OnChangedBeatmap(osu_file);
+            OnBeatmapChanged?.Invoke(osu_file, set_id, id, current_play);
+        }
+
+        private void OnChangedBeatmap(string osu_file)
+        {
+            if (!enable_modify)
+                return;
+
+            if (osu_file != current_osu_file)
+            {
+                RestoreOsuFile(current_osu_file);
+                ModifyOsuFile(osu_file);
+            }
+
+            current_osu_file = osu_file;
+        }
+        #endregion
+
+        ~DifficultParamModifyPlugin()
+        {
+            StopModifyListen();
         }
     }
 }
