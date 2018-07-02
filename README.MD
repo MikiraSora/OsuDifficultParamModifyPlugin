@@ -12,7 +12,7 @@
 理论上这个插件是安全的(打图结算应该再会对铺面文件做效验防止上传)。此插件仅仅是在打图加载铺面前对铺面文件修改，并没有任何修改osu!内存等操作,但以防万一，后果自负。
 
 ### 用法
-编译，并放在Sync/Plugins文件夹即可.<br/>
+请自行编译，并放在Sync/Plugins文件夹即可.<br/>
 `modify_diff listen <true/false>`开启文件监听<br>
 `modify_diff set <param>`设置自定义修改难度值,比如钦定要打的图都是ar10以及hp=10,那么可以<br>
 >
@@ -21,5 +21,8 @@
 > modify_diff set ar:defualt;hp:5.5; //将把ar设置成铺面默认的，hp改成5.5
 >
 
+![](https://puu.sh/APFKU/d15fbbfdfa.png)
+
 ### 最后
-辣鸡HR，怎么还tm改CS的，呸
+辣鸡HR，怎么还tm改CS的，呸<br>
+可以愉快的练习ar10了(迫真)
