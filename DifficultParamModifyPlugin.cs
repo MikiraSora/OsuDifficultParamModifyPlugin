@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using static OsuRTDataProvider.Mods.ModsInfo;
 
@@ -144,20 +145,28 @@ namespace DifficultParamModifyPlugin
 
             if (File.Exists(restore_path))
             {
-                try
-                {
-                    File.Copy(restore_path, restore_target,true);
-                    File.Delete(restore_path);
+                int time = 3;
 
-                    logger.LogInfomation($"恢复成功:{restore_target}");
-                }
-                catch (Exception e)
+                while (time>0)
                 {
-                    logger.LogInfomation($"修改失败 {e.Message}:{restore_target}");
-                }
-                finally
-                {
-                    is_modify = false;
+                    try
+                    {
+                        File.Copy(restore_path, restore_target, true);
+                        File.Delete(restore_path);
+
+                        logger.LogInfomation($"恢复成功:{restore_target}");
+                        break;
+                    }
+                    catch (Exception e)
+                    {
+                        logger.LogInfomation($"修改失败 {e.Message}:{restore_target} 重试次数:{time}");
+                        Thread.Sleep(100);
+                        time--; 
+                    }
+                    finally
+                    {
+                        is_modify = false;
+                    }
                 }
             }
         }
@@ -280,14 +289,14 @@ namespace DifficultParamModifyPlugin
 
         #region Events Wrapper For OLSP
 
-        public event Action<string, int, int, bool> OnBeatmapChanged;
+        public event Action<string, int, int, bool,Dictionary<string,object>> OnBeatmapChanged;
 
         public ModsInfo CurrentMods { get => source_wrapper.current_mod; }
         
-        private void Source_wrapper_OnTrigEvent(string osu_file, int set_id, int id, bool current_play)
+        private void Source_wrapper_OnTrigEvent(string osu_file, int set_id, int id, bool current_play, Dictionary<string, object> extra)
         {
             OnChangedBeatmap(osu_file);
-            OnBeatmapChanged?.Invoke(osu_file, set_id, id, current_play);
+            OnBeatmapChanged?.Invoke(osu_file, set_id, id, current_play,extra);
         }
 
         private void OnChangedBeatmap(string osu_file)

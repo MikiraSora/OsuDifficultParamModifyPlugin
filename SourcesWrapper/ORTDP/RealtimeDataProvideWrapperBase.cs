@@ -2,6 +2,7 @@
 using OsuRTDataProvider.BeatmapInfo;
 using OsuRTDataProvider.Mods;
 using System;
+using System.Collections.Generic;
 using static OsuRTDataProvider.Listen.OsuListenerManager;
 
 namespace DifficultParamModifyPlugin.SourcesWrapper.ORTDP
@@ -10,11 +11,13 @@ namespace DifficultParamModifyPlugin.SourcesWrapper.ORTDP
     {
         public ModsInfo current_mod;
         
-        public event Action<string, int, int, bool> OnTrigEvent;
+        public event Action<string, int, int, bool, Dictionary<string, object>> OnTrigEvent;
 
         protected int beatmapID, beatmapSetID;
 
         protected OsuStatus current_status;
+
+        Beatmap current_beatmap;
 
         public string OsuFilePath;
 
@@ -34,6 +37,7 @@ namespace DifficultParamModifyPlugin.SourcesWrapper.ORTDP
             beatmapID = beatmap.BeatmapID;
             beatmapSetID = beatmap.BeatmapSetID;
             OsuFilePath = beatmap.FilenameFull;
+            current_beatmap = beatmap;
 
             if (current_status == OsuStatus.Listening)
             {
@@ -43,7 +47,9 @@ namespace DifficultParamModifyPlugin.SourcesWrapper.ORTDP
 
         public void FireEvent(string path,int set_id,int id,bool output_type)
         {
-            this.OnTrigEvent?.Invoke(path, set_id, id, output_type);
+            this.OnTrigEvent?.Invoke(path, set_id, id, output_type,new Dictionary<string, object> {
+                {"ortdp_beatmap",current_beatmap}
+            });
         }
 
         public abstract void OnCurrentModsChange(ModsInfo mod);
@@ -66,7 +72,9 @@ namespace DifficultParamModifyPlugin.SourcesWrapper.ORTDP
         {
             CurrentOutputType = false;
             
-            this.OnTrigEvent?.Invoke(OsuFilePath, this.beatmapSetID, this.beatmapID, CurrentOutputType);
+            this.OnTrigEvent?.Invoke(OsuFilePath, this.beatmapSetID, this.beatmapID, CurrentOutputType, new Dictionary<string, object> {
+                {"ortdp_beatmap",current_beatmap}
+            });
         }
 
         public override void Detach()
